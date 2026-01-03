@@ -1,0 +1,21 @@
+{
+  "name": "simple-checklist-notes-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Simple checklist + notes mobile app (Capacitor)",
+  "scripts": {
+    "dev": "npx cap serve",
+    "sync": "npx cap sync",
+    "android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
+    "typescript": "^5.9.3"
+  }
+}
