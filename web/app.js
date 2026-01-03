@@ -1,39 +1,77 @@
-const STORAGE_KEY = "simple-checklist-notes:v1";
+const STORAGE_KEY = "melo-ramen:v1";
 
-/** @typedef {{ id: string, text: string, checked: boolean }} ChecklistItem */
-/** @typedef {{ items: ChecklistItem[], notes: string, updatedAt: number }} AppState */
+/** @typedef {{ checks: Record<string, boolean>, notes: string, dateDigits: string, updatedAt: number }} AppState */
 
-function uuid() {
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID();
-  // Good-enough fallback for local-only IDs.
-  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+const TOPPINGS = [
+  "CHICKEN",
+  "OYSTER MUSHROOM",
+  "SPINACH",
+  "CARROT",
+  "GREEN ONION",
+  "BOILED EGG",
+  "SEA WEED",
+  "SESAME",
+  "EXTRA GARLIC ?",
+];
+
+/** @param {string} text */
+function idFromText(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
-const DEFAULT_ITEMS = /** @type {ChecklistItem[]} */ ([
-  { id: "1", text: "Make the bed", checked: false },
-  { id: "2", text: "Drink water", checked: false },
-  { id: "3", text: "10 min walk", checked: false },
-  { id: "4", text: "Plan tomorrow", checked: false },
-]);
+function todayDDMMYY() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}${mm}${yy}`;
+}
 
 /** @returns {AppState} */
 function loadState() {
+  const base = /** @type {AppState} */ ({
+    checks: {},
+    notes: "",
+    dateDigits: todayDDMMYY(),
+    updatedAt: Date.now(),
+  });
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { items: DEFAULT_ITEMS, notes: "", updatedAt: Date.now() };
-    const parsed = /** @type {AppState} */ (JSON.parse(raw));
-    if (!parsed || !Array.isArray(parsed.items)) throw new Error("Bad state");
+    if (!raw) return base;
+    const parsed = /** @type {Partial<AppState>} */ (JSON.parse(raw));
+    if (!parsed || typeof parsed !== "object") return base;
+
+    const checks = typeof parsed.checks === "object" && parsed.checks ? parsed.checks : {};
+    const dateDigits = typeof parsed.dateDigits === "string" ? parsed.dateDigits : base.dateDigits;
+
     return {
-      items: parsed.items.map((it) => ({
-        id: String(it.id ?? uuid()),
-        text: String(it.text ?? ""),
-        checked: Boolean(it.checked),
-      })),
-      notes: String(parsed.notes ?? ""),
-      updatedAt: Number(parsed.updatedAt ?? Date.now()),
+      checks: /** @type {Record<string, boolean>} */ (checks),
+      notes: typeof parsed.notes === "string" ? parsed.notes : "",
+      dateDigits: dateDigits.replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, " "),
+      updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
     };
   } catch {
-    return { items: DEFAULT_ITEMS, notes: "", updatedAt: Date.now() };
+    // Best-effort migration from the previous app shape (items array).
+    try {
+      const raw = localStorage.getItem("simple-checklist-notes:v1");
+      if (!raw) return base;
+      const parsed = JSON.parse(raw);
+      const checks = /** @type {Record<string, boolean>} */ ({});
+      if (parsed && Array.isArray(parsed.items)) {
+        for (const it of parsed.items) {
+          const txt = String(it?.text ?? "").trim();
+          if (!txt) continue;
+          checks[idFromText(txt.toUpperCase())] = Boolean(it?.checked);
+        }
+      }
+      return { ...base, checks, notes: String(parsed?.notes ?? ""), updatedAt: Date.now() };
+    } catch {
+      return base;
+    }
   }
 }
 
@@ -53,182 +91,115 @@ function formatTime(ts) {
   }
 }
 
-function formatTodaySubtitle() {
-  const d = new Date();
-  try {
-    return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(d);
-  } catch {
-    return d.toDateString();
-  }
-}
-
-/** @param {ChecklistItem} item */
-function renderItem(item) {
-  const li = document.createElement("li");
-  li.className = "checklist__item";
-  li.dataset.itemId = item.id;
-
-  const label = document.createElement("label");
-  label.className = "checklist__label";
-
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.className = "checkbox";
-  checkbox.checked = item.checked;
-  checkbox.setAttribute("aria-label", `Mark "${item.text}" as done`);
-
-  const text = document.createElement("span");
-  text.className = "checklist__text" + (item.checked ? " checklist__text--done" : "");
-  text.textContent = item.text || "Untitled";
-
-  label.appendChild(checkbox);
-  label.appendChild(text);
-
-  const actions = document.createElement("div");
-  actions.className = "item-actions";
-
-  const delBtn = document.createElement("button");
-  delBtn.type = "button";
-  delBtn.className = "icon-btn icon-btn--danger";
-  delBtn.textContent = "Del";
-  delBtn.setAttribute("aria-label", `Delete "${item.text}"`);
-
-  actions.appendChild(delBtn);
-
-  li.appendChild(label);
-  li.appendChild(actions);
-
-  return { li, checkbox, text, delBtn };
-}
-
 let state = loadState();
 
 const checklistEl = document.getElementById("checklist");
-const doneCountEl = document.getElementById("doneCount");
-const totalCountEl = document.getElementById("totalCount");
 const notesInput = document.getElementById("notesInput");
 const notesDoneBtn = document.getElementById("notesDoneBtn");
 const notesSavedHint = document.getElementById("notesSavedHint");
-const addItemBtn = document.getElementById("addItemBtn");
-const resetBtn = document.getElementById("resetBtn");
-const addDialog = document.getElementById("addDialog");
-const newItemInput = document.getElementById("newItemInput");
-const todaySubtitle = document.getElementById("todaySubtitle");
-const addDialogForm = addDialog instanceof HTMLDialogElement ? addDialog.querySelector("form") : null;
+const dateDigitsEl = document.getElementById("dateDigits");
 
 if (!(checklistEl instanceof HTMLElement)) throw new Error("Missing checklist element");
 if (!(notesInput instanceof HTMLTextAreaElement)) throw new Error("Missing notes input");
 if (!(notesDoneBtn instanceof HTMLButtonElement)) throw new Error("Missing notes done button");
 if (!(notesSavedHint instanceof HTMLElement)) throw new Error("Missing notes saved hint");
-if (!(addItemBtn instanceof HTMLButtonElement)) throw new Error("Missing add item button");
-if (!(resetBtn instanceof HTMLButtonElement)) throw new Error("Missing reset button");
-if (!(addDialog instanceof HTMLDialogElement)) throw new Error("Missing dialog");
-if (!(newItemInput instanceof HTMLInputElement)) throw new Error("Missing new item input");
-if (!(todaySubtitle instanceof HTMLElement)) throw new Error("Missing subtitle");
-if (!(addDialogForm instanceof HTMLFormElement)) throw new Error("Missing add dialog form");
+if (!(dateDigitsEl instanceof HTMLElement)) throw new Error("Missing date digits");
 
-todaySubtitle.textContent = formatTodaySubtitle();
-
-function updateCounts() {
-  const total = state.items.length;
-  const done = state.items.filter((i) => i.checked).length;
-  if (doneCountEl) doneCountEl.textContent = String(done);
-  if (totalCountEl) totalCountEl.textContent = String(total);
+/** @param {string} id */
+function isChecked(id) {
+  return Boolean(state.checks[id]);
 }
 
-function updateNotesSavedHint() {
-  notesSavedHint.textContent = state.updatedAt ? `Saved ${formatTime(state.updatedAt)}` : "";
+/** @param {string} id @param {boolean} checked */
+function setChecked(id, checked) {
+  state.checks = { ...state.checks, [id]: checked };
+  state = saveState(state);
+  updateSavedHint();
 }
 
-function render() {
+function updateSavedHint() {
+  notesSavedHint.textContent = state.updatedAt ? `SAVED ${formatTime(state.updatedAt)}` : "";
+}
+
+function renderChecklist() {
   checklistEl.innerHTML = "";
-  state.items.forEach((item) => {
-    const { li, checkbox, text, delBtn } = renderItem(item);
 
-    checkbox.addEventListener("change", () => {
-      const idx = state.items.findIndex((it) => it.id === item.id);
-      if (idx === -1) return;
-      state.items[idx] = { ...state.items[idx], checked: checkbox.checked };
-      text.classList.toggle("checklist__text--done", checkbox.checked);
-      state = saveState(state);
-      updateCounts();
-      updateNotesSavedHint();
-    });
+  for (const topping of TOPPINGS) {
+    const id = idFromText(topping);
+    const li = document.createElement("li");
+    li.className = "topping";
 
-    delBtn.addEventListener("click", () => {
-      state.items = state.items.filter((it) => it.id !== item.id);
-      state = saveState(state);
-      render();
-    });
+    const label = document.createElement("label");
+    label.className = "topping__label";
 
+    const cb = document.createElement("input");
+    cb.className = "checkbox";
+    cb.type = "checkbox";
+    cb.checked = isChecked(id);
+    cb.setAttribute("aria-label", topping);
+
+    cb.addEventListener("change", () => setChecked(id, cb.checked));
+
+    const text = document.createElement("span");
+    text.className = "topping__text";
+    text.textContent = topping;
+
+    label.appendChild(cb);
+    label.appendChild(text);
+    li.appendChild(label);
     checklistEl.appendChild(li);
-  });
+  }
+}
 
-  notesInput.value = state.notes;
-  updateCounts();
-  updateNotesSavedHint();
+function bindDateInputs() {
+  const inputs = Array.from(dateDigitsEl.querySelectorAll("input"));
+  if (inputs.length !== 6) return;
+
+  const digits = (state.dateDigits || todayDDMMYY()).replace(/[^0-9 ]/g, "").slice(0, 6).padEnd(6, " ");
+  inputs.forEach((input, idx) => {
+    if (!(input instanceof HTMLInputElement)) return;
+    input.value = digits[idx] === " " ? "" : digits[idx];
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/[^0-9]/g, "").slice(-1);
+      const nextDigits = inputs
+        .map((i) => (i instanceof HTMLInputElement ? (i.value || " ") : " "))
+        .join("")
+        .slice(0, 6);
+      state.dateDigits = nextDigits;
+      state = saveState(state);
+      updateSavedHint();
+      if (input.value && idx < inputs.length - 1) {
+        const next = inputs[idx + 1];
+        if (next instanceof HTMLInputElement) next.focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !input.value && idx > 0) {
+        const prev = inputs[idx - 1];
+        if (prev instanceof HTMLInputElement) prev.focus();
+      }
+    });
+  });
 }
 
 let notesSaveTimer = /** @type {number | undefined} */ (undefined);
-
 function scheduleNotesSave() {
   if (notesSaveTimer) window.clearTimeout(notesSaveTimer);
   notesSaveTimer = window.setTimeout(() => {
     state.notes = notesInput.value;
     state = saveState(state);
-    updateNotesSavedHint();
+    updateSavedHint();
   }, 250);
 }
 
 notesInput.addEventListener("input", scheduleNotesSave);
 
-// On mobile, tapping "Done" should dismiss the keyboard.
-notesDoneBtn.addEventListener("click", () => {
-  notesInput.blur();
-});
+// On mobile, tapping "DONE" should dismiss the keyboard.
+notesDoneBtn.addEventListener("click", () => notesInput.blur());
 
-// Also blur on Enter (best-effort; mobile keyboards differ).
-notesInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-    notesInput.blur();
-  }
-});
-
-addItemBtn.addEventListener("click", () => {
-  newItemInput.value = "";
-  addDialog.showModal();
-  // Ensure the keyboard opens on mobile.
-  window.setTimeout(() => newItemInput.focus(), 50);
-});
-
-addDialogForm.addEventListener("submit", (e) => {
-  const submitter = /** @type {HTMLButtonElement | null} */ (e.submitter ?? null);
-  const wantsAdd = submitter?.value === "default";
-  if (!wantsAdd) return;
-  const text = newItemInput.value.trim();
-  if (!text) {
-    e.preventDefault();
-    newItemInput.focus();
-  }
-});
-
-addDialog.addEventListener("close", () => {
-  const isAdd = addDialog.returnValue === "default";
-  if (!isAdd) return;
-  const text = newItemInput.value.trim();
-  if (!text) return;
-  state.items = [{ id: uuid(), text, checked: false }, ...state.items];
-  state = saveState(state);
-  render();
-});
-
-resetBtn.addEventListener("click", () => {
-  const ok = confirm("Reset checklist and notes?");
-  if (!ok) return;
-  state = { items: DEFAULT_ITEMS.map((i) => ({ ...i })), notes: "", updatedAt: Date.now() };
-  state = saveState(state);
-  render();
-});
-
-render();
+notesInput.value = state.notes;
+renderChecklist();
+bindDateInputs();
+updateSavedHint();
 

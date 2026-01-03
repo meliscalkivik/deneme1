@@ -3,39 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Checklist & Notes</title>
+    <title>Melo's Ramen</title>
     <meta name="description" content="A simple one-page checklist and notes app." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="page">
-      <header class="header">
-        <div class="header__text">
-          <h1 class="title">Today</h1>
-          <p class="subtitle" id="todaySubtitle"></p>
-        </div>
-        <button class="button button--ghost" id="resetBtn" type="button" aria-label="Reset checklist and notes">
-          Reset
-        </button>
+    <main class="sheet" aria-label="Melo's Ramen checklist">
+      <header class="sheet__header">
+        <h1 class="sheet__title">MELO'S RAMEN</h1>
       </header>
 
-      <section class="card" aria-label="Checklist">
-        <div class="card__header">
-          <h2 class="card__title">Checklist</h2>
-          <p class="card__hint"><span id="doneCount">0</span>/<span id="totalCount">0</span> done</p>
-        </div>
-
-        <ul class="checklist" id="checklist" role="list"></ul>
-
-        <div class="card__footer">
-          <button class="button" id="addItemBtn" type="button">Add item</button>
+      <section class="date-row" aria-label="Date">
+        <div class="date-row__spacer" aria-hidden="true"></div>
+        <div class="date-row__right">
+          <div class="date-row__label">Date</div>
+          <div class="date" id="dateDigits" aria-label="Date digits (DDMMYY)">
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 1" />
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 2" />
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 3" />
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 4" />
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 5" />
+            <input class="date__digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Date digit 6" />
+          </div>
         </div>
       </section>
 
-      <section class="card" aria-label="Notes">
-        <div class="card__header">
-          <h2 class="card__title">Notes</h2>
-          <p class="card__hint">Tap to type</p>
+      <section class="section" aria-label="Toppings">
+        <h2 class="section__title">TOPPINGS</h2>
+        <ul class="toppings" id="checklist" role="list"></ul>
+      </section>
+
+      <section class="section" aria-label="Notes">
+        <div class="notes-head">
+          <h2 class="section__title">NOTES</h2>
+          <button class="text-btn" id="notesDoneBtn" type="button" aria-label="Done typing">
+            DONE
+          </button>
         </div>
 
         <label class="sr-only" for="notesInput">Notes</label>
@@ -47,46 +53,12 @@
           autocomplete="off"
           autocapitalize="sentences"
           spellcheck="true"
-          placeholder="Write notes here…"
-          rows="6"
+          placeholder=""
+          rows="10"
         ></textarea>
-
-        <div class="card__footer card__footer--split">
-          <div class="muted" id="notesSavedHint" aria-live="polite"></div>
-          <button class="button button--secondary" id="notesDoneBtn" type="button">Done</button>
-        </div>
+        <div class="save-hint" id="notesSavedHint" aria-live="polite"></div>
       </section>
-
-      <footer class="footer">
-        <p class="footer__text">Saved on this device.</p>
-      </footer>
     </main>
-
-    <dialog class="dialog" id="addDialog" aria-label="Add checklist item">
-      <form method="dialog" class="dialog__card">
-        <div class="dialog__header">
-          <h3 class="dialog__title">New item</h3>
-          <button class="icon-btn" value="cancel" aria-label="Close">✕</button>
-        </div>
-
-        <label class="sr-only" for="newItemInput">Item text</label>
-        <input
-          id="newItemInput"
-          class="text-input"
-          type="text"
-          inputmode="text"
-          enterkeyhint="done"
-          autocomplete="off"
-          placeholder="e.g. Drink water"
-          required
-        />
-
-        <div class="dialog__actions">
-          <button class="button button--secondary" value="cancel" type="submit">Cancel</button>
-          <button class="button" id="saveNewItemBtn" value="default" type="submit">Add</button>
-        </div>
-      </form>
-    </dialog>
 
     <script src="./app.js" defer></script>
   </body>
