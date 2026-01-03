@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Checklist & Notes</title>
+    <meta name="description" content="A simple one-page checklist and notes app." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <div class="header__text">
+          <h1 class="title">Today</h1>
+          <p class="subtitle" id="todaySubtitle"></p>
+        </div>
+        <button class="button button--ghost" id="resetBtn" type="button" aria-label="Reset checklist and notes">
+          Reset
+        </button>
+      </header>
+
+      <section class="card" aria-label="Checklist">
+        <div class="card__header">
+          <h2 class="card__title">Checklist</h2>
+          <p class="card__hint"><span id="doneCount">0</span>/<span id="totalCount">0</span> done</p>
+        </div>
+
+        <ul class="checklist" id="checklist" role="list"></ul>
+
+        <div class="card__footer">
+          <button class="button" id="addItemBtn" type="button">Add item</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Notes">
+        <div class="card__header">
+          <h2 class="card__title">Notes</h2>
+          <p class="card__hint">Tap to type</p>
+        </div>
+
+        <label class="sr-only" for="notesInput">Notes</label>
+        <textarea
+          id="notesInput"
+          class="notes"
+          inputmode="text"
+          enterkeyhint="done"
+          autocomplete="off"
+          autocapitalize="sentences"
+          spellcheck="true"
+          placeholder="Write notes here…"
+          rows="6"
+        ></textarea>
+
+        <div class="card__footer card__footer--split">
+          <div class="muted" id="notesSavedHint" aria-live="polite"></div>
+          <button class="button button--secondary" id="notesDoneBtn" type="button">Done</button>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p class="footer__text">Saved on this device.</p>
+      </footer>
+    </main>
+
+    <dialog class="dialog" id="addDialog" aria-label="Add checklist item">
+      <form method="dialog" class="dialog__card">
+        <div class="dialog__header">
+          <h3 class="dialog__title">New item</h3>
+          <button class="icon-btn" value="cancel" aria-label="Close">✕</button>
+        </div>
+
+        <label class="sr-only" for="newItemInput">Item text</label>
+        <input
+          id="newItemInput"
+          class="text-input"
+          type="text"
+          inputmode="text"
+          enterkeyhint="done"
+          autocomplete="off"
+          placeholder="e.g. Drink water"
+          required
+        />
+
+        <div class="dialog__actions">
+          <button class="button button--secondary" value="cancel" type="submit">Cancel</button>
+          <button class="button" id="saveNewItemBtn" value="default" type="submit">Add</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
