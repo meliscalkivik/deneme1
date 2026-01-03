@@ -19,6 +19,17 @@ python3 -m http.server 8000 --directory web
 
 Then open `http://localhost:8000`.
 
+## Shareable link (GitHub Pages)
+
+Once your changes are pushed to `main`, enable Pages:
+
+- Repo **Settings** → **Pages**
+- **Build and deployment** → **Source**: **GitHub Actions**
+
+Your link will be:
+
+- `https://meliscalkivik.github.io/deneme1/`
+
 ## Mobile (Capacitor)
 
 Install dependencies:
